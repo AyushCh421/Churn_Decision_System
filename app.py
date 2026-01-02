@@ -3,91 +3,117 @@ import pandas as pd
 import numpy as np
 import joblib
 
-# -------------------- PAGE CONFIG --------------------
+# -----------------------------
+# App Config
+# -----------------------------
 st.set_page_config(
-    page_title="Churn Decision System",
+    page_title="Customer Churn Decision System",
     layout="centered"
 )
 
-st.title("📉 Customer Churn Decision System")
+st.title("📊 Customer Churn Decision System")
 st.caption("Built by Ayush Chauhan | ML Enthusiast")
 
-# -------------------- LOAD ARTIFACTS --------------------
-@st.cache_resource
-def load_artifacts():
-    model = joblib.load("logistic_churn_model.pkl")
-    scaler = joblib.load("scaler.pkl")
-    features = joblib.load("model_features.pkl")
-    return model, scaler, features
+# -----------------------------
+# Load Artifacts
+# -----------------------------
+model = joblib.load("logistic_churn_model.pkl")
+scaler = joblib.load("scaler.pkl")
+features = joblib.load("model_features.pkl")
 
-model, scaler, FEATURES = load_artifacts()
+# Numeric columns used during scaling
+num_cols = list(scaler.feature_names_in_)
 
-# -------------------- USER INPUT --------------------
-st.subheader("🧾 Customer Information")
+# -----------------------------
+# User Inputs
+# -----------------------------
+st.subheader("Enter Customer Details")
 
-tenure = st.slider("Tenure (months)", 0, 72, 12)
-monthly_charges = st.slider("Monthly Charges", 20, 200, 70)
-contract = st.selectbox("Contract Type", ["Month-to-month", "One year", "Two year"])
-paperless = st.selectbox("Paperless Billing", ["Yes", "No"])
-internet = st.selectbox("Internet Service", ["Fiber Optic", "DSL", "No Internet"])
-payment = st.selectbox(
-    "Payment Method",
-    ["Credit Card", "Electronic Check", "Mailed Check"]
+tenure = st.slider("Tenure (Months)", 0, 72, 1)
+monthly_charge = st.slider("Monthly Charge", 20, 150, 120)
+
+contract_type = st.selectbox(
+    "Contract Type",
+    ["Month-to-month", "One year", "Two year"]
 )
 
-# -------------------- BUILD INPUT ROW --------------------
-input_dict = dict.fromkeys(FEATURES, 0)
+internet_type = st.selectbox(
+    "Internet Type",
+    ["DSL", "Fiber optic", "No internet"]
+)
 
-# Numerical
-input_dict["tenure"] = tenure
-input_dict["MonthlyCharges"] = monthly_charges
+online_security = st.selectbox(
+    "Online Security",
+    ["Yes", "No"]
+)
+
+paperless_billing = st.selectbox(
+    "Paperless Billing",
+    ["Yes", "No"]
+)
+
+# -----------------------------
+# Build Input DataFrame
+# -----------------------------
+input_df = pd.DataFrame(
+    np.zeros((1, len(features))),
+    columns=features
+)
+
+# Numeric features
+input_df.at[0, "Tenure in Months"] = tenure
+input_df.at[0, "Monthly Charge"] = monthly_charge
 
 # Contract
-if contract == "One year":
-    input_dict["Contract_One Year"] = 1
-elif contract == "Two year":
-    input_dict["Contract_Two Year"] = 1
+if contract_type == "One year":
+    input_df.at[0, "Contract_One Year"] = 1
+elif contract_type == "Two year":
+    input_df.at[0, "Contract_Two Year"] = 1
 
-# Internet
-if internet == "Fiber Optic":
-    input_dict["InternetService_Fiber optic"] = 1
-elif internet == "DSL":
-    input_dict["InternetService_DSL"] = 1
+# Internet Type
+if internet_type == "DSL":
+    input_df.at[0, "Internet Type_DSL"] = 1
+elif internet_type == "Fiber optic":
+    input_df.at[0, "Internet Type_Fiber Optic"] = 1
+else:
+    input_df.at[0, "Internet Type_No Internet"] = 1
 
-# Billing
-if paperless == "Yes":
-    input_dict["PaperlessBilling_Yes"] = 1
+# Online Security
+if online_security == "Yes":
+    input_df.at[0, "Online Security_Yes"] = 1
 
-# Payment
-if payment == "Credit Card":
-    input_dict["PaymentMethod_Credit card (automatic)"] = 1
-elif payment == "Electronic Check":
-    input_dict["PaymentMethod_Electronic check"] = 1
-elif payment == "Mailed Check":
-    input_dict["PaymentMethod_Mailed check"] = 1
+# Paperless Billing
+if paperless_billing == "Yes":
+    input_df.at[0, "Paperless Billing_Yes"] = 1
 
-# -------------------- DATAFRAME --------------------
-input_df = pd.DataFrame([input_dict])
-
-# Scale numerical columns
-num_cols = ["tenure", "MonthlyCharges"]
+# -----------------------------
+# Scale Numeric Columns
+# -----------------------------
 input_df[num_cols] = scaler.transform(input_df[num_cols])
 
-# -------------------- PREDICTION --------------------
-if st.button("🔍 Predict Churn Risk"):
-    churn_prob = model.predict_proba(input_df)[0][1]
+# -----------------------------
+# Prediction
+# -----------------------------
+churn_prob = model.predict_proba(input_df)[0][1]
 
-    st.metric("Churn Probability", f"{churn_prob:.2%}")
-
-    if churn_prob >= 0.60:
-        st.error("🚨 High Risk of Churn")
-    elif churn_prob >= 0.40:
-        st.warning("⚠️ Medium Risk of Churn")
-    else:
-        st.success("✅ Low Risk of Churn")
-
-    st.caption("Prediction based on Logistic Regression probability score")
-
-# -------------------- FOOTER --------------------
 st.markdown("---")
-st.caption("This model demonstrates end-to-end ML deployment: preprocessing → modeling → inference → UI.")
+st.subheader("Prediction Result")
+
+st.metric(
+    label="Churn Probability",
+    value=f"{churn_prob * 100:.2f}%"
+)
+
+# Risk Label
+if churn_prob >= 0.6:
+    st.error("🔴 High Risk of Churn")
+elif churn_prob >= 0.3:
+    st.warning("🟡 Medium Risk of Churn")
+else:
+    st.success("🟢 Low Risk of Churn")
+
+st.markdown("**Final Decision:**")
+if churn_prob >= 0.5:
+    st.write("❌ Likely to Churn")
+else:
+    st.write("✅ Not Likely to Churn")
