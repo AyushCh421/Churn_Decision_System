@@ -96,9 +96,10 @@ streamlit run app.py
 
 
 🌐 Deployment
-The application is deployed using Streamlit Community Cloud.
+The application is deployed using Streamlit Community Cloud
 
-(Add deployment link here after hosting)
+https://churndecisionsystem-7eu2dh5kxhokmiap8rwmpx.streamlit.app/
+
 
 👤 Author
 
